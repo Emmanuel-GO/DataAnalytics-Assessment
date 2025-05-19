@@ -129,6 +129,21 @@ WHERE
 ORDER BY 
     total_deposits_in_currency DESC;
 ```
+*_Output Snippet_*
+
+| customer_id                      | full_name          | number_of_savings_plans | number_of_investment_plans | total_deposits_in_currency |
+|----------------------------------|--------------------|--------------------------|-----------------------------|-----------------------------|
+| 1909df3eba2548cfa3b9c270112bd262 | Chima Ataman       | 3                        | 9                           | 890,312,000                |
+| 5572810f38b543429ffb218ef15243fc | Obi David          | 91                       | 24                          | 389,625,000                |
+| 75cb72d217324ace976cb9104d1d2d9c | David dashme       | 26                       | 23                          | 259,080,000                |
+| 3097d111f15b4c44ac1bf1f4cd5a12ad | Obi Obi            | 11                       | 5                           | 216,204,000                |
+| 0257625a02344b239b41e1cbe60ef080 | Opeoluwa Popoola   | 274                      | 13                          | 174,823,000                |
+| 427085b0eb1048f29d882d645658c09d | Obi Uchenna David  | 20                       | 1                           | 142,507,000                |
+| 363237ae6a2242feb3c973ef20247f79 | Yami PThree        | 54                       | 35                          | 134,359,000                |
+| f026b5d9d7d84a7a9e452862f58b4cf9 | Enor Izomor        | 24                       | 14                          | 121,761,000                |
+| 626639a2ad904f47bd76183910403064 | dara Fakoya        | 7                        | 7                           | 117,461,000                |
+| 72141b6db0a94e9b8414ae0e783792b7 | Timothy Olanrewaju | 112                      | 38                          | 98,279,300                 |
+
 
 - Joins users with their respective savings, investments, and deposit values.
 - Filters to only include users who have:
@@ -232,9 +247,16 @@ categorized AS (
 ```
 SELECT * FROM categorized;
 ```
+*_Output Snippet_*
+
+| frequency_category | customer_count | avg_transactions_per_month |
+|--------------------|----------------|-----------------------------|
+| High Frequency     | 141            | 44.7                        |
+| Medium Frequency   | 178            | 4.6                         |
+| Low Frequency      | 554            | 1.4                         |
 
 
-##  Challenges & 🛠️ Resolutions
+##  Challenges &  Resolutions
 
 While working on segmenting customers by their transaction frequency, I ran into a few common data processing challenges. Here's a breakdown of what came up and how I tackled each one:
 
@@ -255,7 +277,7 @@ This approach gave me a clear and practical way to group customers by how often 
 
 
 
-# Approach Breakdown for Identifying Inactive Savings/Investment Plans
+## Approach Breakdown for Identifying Inactive Savings/Investment Plans
 
 ## Objective
 
@@ -349,6 +371,23 @@ WHERE
     inactivity_days > 365;
 
 ```
+*_Output Snippet_*
+
+| plan_id                          | owner_id                         | type       | last_transaction_date   | inactivity_days |
+|----------------------------------|----------------------------------|------------|--------------------------|-----------------|
+| 0074314e91e8494aae882d407250c035 | fcc798a462f9419eabd48ceba3ea69b4 | Savings    | 2023-08-24 21:49:07     | 634             |
+| 0085b048534140789c69d66da3aed961 | 17d9345656ef4bf397ca59f2b5a32872 | Savings    | 2021-03-24 16:43:53     | 1517            |
+| 02b9641b37974853ba06daf30952a214 | 13b3032ed82b4d8c99863777d67750c5 | Investment | 2023-06-16 16:19:49     | 703             |
+| 061bf8d5a37d4f00a459491dc7da7e3f | 4583504b689448509749262ba8c0411c | Savings    | 2021-09-28 17:21:36     | 1329            |
+| 061ec0885e634d83bcc7b33abd713b6a | 055cb8f0dbf8415f86dfb187bc367e9d | Savings    | 2023-10-24 11:54:44     | 573             |
+| 07f5edc785e04bef942349ef6080e715 | 3a32a6863fe3494d8389f6e9e58d9ce1 | Savings    | 2022-07-18 12:12:57     | 1036            |
+| 08049292308d4109a05ffcd0cf309ddf | 3ab0b5df70d94558bbb484719ec1769d | Savings    | 2023-11-06 23:46:49     | 560             |
+| 09080e42399244c195589931c8ab5daa | 258dc1f000aa491a90da194ca732a8de | Investment | 2023-12-08 12:28:27     | 528             |
+| 0a08ef91c8ca4f6694f199e40faa906c | 258dc1f000aa491a90da194ca732a8de | Investment | 2023-12-08 12:28:27     | 528             |
+| 0bf59545f2f34b68995a64d82eface78 | 85c08eeda75644e1a0cdbd2a83a585c6 | Savings    | 2024-05-02 00:33:00     | 382             |
+
+
+
 
 - Filters to show only those plans with more than 365 days of inactivity.
 
@@ -487,6 +526,23 @@ SELECT *
 FROM combined
 ORDER BY estimated_clv DESC;
 ```
+
+*_Output Snippet_*
+
+| customer_id                      | name           | tenure_months | total_transactions | estimated_clv |
+|----------------------------------|----------------|----------------|---------------------|----------------|
+| a96f45b14f074cc1a9675ba104194f87 | Obi-Wan Kenobi | 36             | 6089                | 2.03           |
+| 3aa79f2f1c0148cd964a6f91dd0fd72b | Nacer Pantsil  | 34             | 5684                | 2.01           |
+| de86441af0dc4a7a9f35dc8e0251b5c3 | Omokhose Dania | 32             | 4942                | 1.85           |
+| 5572810f38b543429ffb218ef15243fc | Obi David      | 72             | 10548               | 1.76           |
+| c9297018ab1d4dd9bde1ea4fe0ce4f6a | Olu Timo       | 18             | 2591                | 1.73           |
+| e500417721c6424fb879d603615a6d77 | Omokhose Dania | 32             | 4544                | 1.70           |
+| 566126bab52a4754936e309e3166a797 | Jigan Trabaye  | 34             | 4427                | 1.56           |
+| 363237ae6a2242feb3c973ef20247f79 | Yami PThree    | 66             | 6319                | 1.15           |
+| da1b733b34084652897e4be00f49ffb0 | Adim Oka       | 24             | 2272                | 1.14           |
+| af154b8efc024eb2a88b6c872f1c6d07 | John Doe       | 18             | 1686                | 1.12           |
+
+
 
 # Customer Value Query Summary
 
