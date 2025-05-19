@@ -544,7 +544,7 @@ ORDER BY estimated_clv DESC;
 
 
 
-# Customer Value Query Summary
+### Customer Value Query Summary
 
 ## Displays:
 
@@ -560,7 +560,7 @@ ORDER BY estimated_clv DESC;
 
 ---
 
-## Challenges & Resolutions
+### Challenges & Resolutions
 
 | Challenge                  | Resolution                                                                                 |
 |----------------------------|--------------------------------------------------------------------------------------------|
@@ -572,7 +572,7 @@ ORDER BY estimated_clv DESC;
 
 ---
 
-## Conclusion
+### Conclusion
 
 This query offers a data-driven estimate of customer value over time based on actual behavior. It supports:
 
