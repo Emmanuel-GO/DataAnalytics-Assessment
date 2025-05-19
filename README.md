@@ -179,21 +179,227 @@ WITH monthly_transactions AS (
 
 - GROUP BY ensures transactions are aggregated by user and month.
 
-### Output 
+### Step 2: CTE - customer_avg_txn
 
-| owner\_id | txn\_month | txn\_count |
-| --------- | ---------- | ---------- |
-| 101       | 2025-01-01 | 7          |
-| 101       | 2025-02-01 | 5          |
-| 102       | 2025-01-01 | 12         |
-| ...       | ...        | ...        |
+```
+customer_avg_txn AS (
+    SELECT 
+        owner_id,
+        AVG(txn_count) AS avg_transactions_per_month
+    FROM monthly_transactions
+    GROUP BY owner_id
+),
+```
+
+- Calculates the average monthly transaction count per user.
+
+- Uses the monthly data from the first CTE to compute per-user activity level.
+
+### Step 3: CTE - categorized
+
+```
+categorized AS (
+    SELECT 
+        CASE 
+            WHEN avg_transactions_per_month >= 10 THEN 'High Frequency'
+            WHEN avg_transactions_per_month BETWEEN 3 AND 9 THEN 'Medium Frequency'
+            ELSE 'Low Frequency'
+        END AS frequency_category,
+        COUNT(*) AS customer_count,
+        ROUND(AVG(avg_transactions_per_month), 1) AS avg_transactions_per_month
+    FROM customer_avg_txn
+    GROUP BY frequency_category
+)
+
+```
+- Buckets customers based on their average monthly transactions:
+
+    - High Frequency: ≥ 10 transactions/month
+
+    - Medium Frequency: 3–9 transactions/month
+
+   - Low Frequency: < 3 transactions/month
+
+*Aggregates:*
+
+- Total number of customers in each bucket
+
+- Average transaction count per category (rounded to 1 decimal place)
+
+
+### Final Query Output
+
+```
+SELECT * FROM categorized;
+```
+
+
+##  Challenges & 🛠️ Resolutions
+
+While working on segmenting customers by their transaction frequency, I ran into a few common data processing challenges. Here's a breakdown of what came up and how I tackled each one:
+
+### Challenge: Normalizing transaction dates by month  
+**Resolution:**  
+I needed to analyze transactions on a monthly basis, but the raw data had full date stamps. To standardize this, I used:
+```sql
+DATE_FORMAT(transaction_date, '%Y-%m-01')
+```
+This transformed every transaction date into the first day of its respective month, making it easier to group and analyze transactions consistently.
+
+### Challenge: Determining transaction frequency per user
+**Resolution:**
+To figure out how often each user transacts, I created a CTE (Common Table Expression) that counted the number of transactions per user per month. Then I used AVG() over these monthly counts to compute each user's average monthly transaction frequency.
+
+## Conclusion 
+This approach gave me a clear and practical way to group customers by how often they transact. By looking at their monthly activity and averaging it out, I could easily sort them into High, Medium, or Low Frequency tiers. It’s a helpful way to spot active users, identify those dropping off, and plan smarter engagement—like who to reward or re-engage. Using CTEs made the logic clean and easy to follow, which will be handy as the data grows.
 
 
 
 
 
 
+---------------------------------------------
 
+
+
+
+# Approach Breakdown for Estimating Customer Lifetime Value (CLV) Based on Transaction Behavior
+
+##  Objective
+
+Estimate each customer’s **Customer Lifetime Value (CLV)** using:
+
+- Their total confirmed transactions.
+- Their tenure (in months) since first transaction.
+- A standard CLV formula:  
+  > `(Total Transactions ÷ Tenure Months) × 12 × 0.001`
+
+---
+
+## Step 1: CTE - `customer_txn_summary`
+
+**Purpose:** Aggregate total number and value of confirmed transactions for each customer.
+
+```sql
+WITH customer_txn_summary AS (
+    SELECT 
+        sa.owner_id,
+        COUNT(*) AS total_transactions,
+        SUM(confirmed_amount) AS total_transaction_value
+    FROM 
+        savings_savingsaccount sa
+    GROUP BY 
+        sa.owner_id
+),
+```
+
+- COUNT(*) counts all confirmed transactions by each customer.
+
+- SUM(confirmed_amount) gives the total raw value of transactions.
+
+- This builds the base for understanding how active each customer is.
+
+## Step 2: CTE - `tenure_calc`
+
+**Purpose:**  
+Calculate each customer’s tenure in months — the duration from their first transaction to the current date.
+
+```
+tenure_calc AS (
+    SELECT 
+        u.id AS customer_id,
+        CONCAT(u.first_name, ' ', u.last_name) AS name,
+        TIMESTAMPDIFF(MONTH, MIN(sa.transaction_date), CURRENT_DATE) AS tenure_months
+    FROM 
+        users_customuser u
+    JOIN 
+        savings_savingsaccount sa ON u.id = sa.owner_id
+    GROUP BY 
+        u.id, u.first_name, u.last_name
+),
+```
+- Uses MIN(sa.transaction_date) to get the earliest transaction date.
+
+- TIMESTAMPDIFF(MONTH, ..., CURRENT_DATE) computes total months active.
+
+- Joins with users_customuser for customer metadata (e.g., full name).
+
+Step 3: CTE - `combined`
+Purpose: Merge tenure and transaction activity to compute estimated CLV using a standardized formula.
+
+```
+combined AS (
+    SELECT 
+        t.customer_id,
+        t.name,
+        t.tenure_months,
+        cts.total_transactions,
+        ROUND(((cts.total_transactions * 1.0 / NULLIF(t.tenure_months, 0)) * 12 * 0.001), 2) AS estimated_clv
+    FROM 
+        tenure_calc t
+    JOIN 
+        customer_txn_summary cts ON t.customer_id = cts.owner_id
+)
+
+```
+- Combines transaction summary and tenure data.
+
+- Calculates estimated CLV as:
+
+```
+(total_transactions / tenure_months) × 12 × 0.001
+
+```
+- NULLIF(t.tenure_months, 0) safely avoids division-by-zero errors.
+
+### Final Output
+```
+SELECT * 
+FROM combined
+ORDER BY estimated_clv DESC;
+```
+
+# Customer Value Query Summary
+
+## Displays:
+
+| Field              | Description                      |
+|--------------------|--------------------------------|
+| Customer ID        | Unique identifier for the customer |
+| Name               | Full customer name (first + last) |
+| Tenure in months   | Active customer duration in months |
+| Total transactions | Number of transactions made by the customer |
+| Estimated CLV      | Customer Lifetime Value estimate |
+
+**Ordered in descending CLV to highlight the most valuable customers.**
+
+---
+
+## Challenges & Resolutions
+
+| Challenge                  | Resolution                                                                                 |
+|----------------------------|--------------------------------------------------------------------------------------------|
+| Handling zero tenure        | Used `NULLIF(t.tenure_months, 0)` to prevent division-by-zero errors.                      |
+| Interpreting CLV formula   | Broke down the CLV formula into frequency × annualization × conversion factor.             |
+| Accurate tenure calculation | Used `TIMESTAMPDIFF(MONTH, MIN(transaction_date), CURRENT_DATE)` for precise active duration. |
+| Full customer name in output| Used `CONCAT(first_name, ' ', last_name)` for better readability.                          |
+| Ensuring reliable joins    | Applied only necessary JOINs after ensuring presence in both transaction and user tables. |
+
+---
+
+## Conclusion
+
+This query offers a data-driven estimate of customer value over time based on actual behavior. It supports:
+
+- Identifying high-value customers.
+- Prioritizing retention or cross-sell campaigns.
+- Personalizing customer journeys.
+
+By structuring with modular CTEs, it’s easy to extend for:
+
+- Tiered CLV calculation.
+- Time-filtered analysis.
+- Integration with customer segmentation models.
 
 
 
