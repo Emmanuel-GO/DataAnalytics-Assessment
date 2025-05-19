@@ -255,12 +255,141 @@ This approach gave me a clear and practical way to group customers by how often 
 
 
 
+# Approach Breakdown for Identifying Inactive Savings/Investment Plans
+
+## Objective
+
+Identify users who have either a **savings** or **investment** plan but have not performed **any savings transaction in the past year**.
+
+---
+
+### Step 1: CTE - `last_savings_txn`
+
+**Purpose:** Determine the **most recent transaction date** for each user based on their savings activity.
+
+```sql
+WITH last_savings_txn AS (
+    SELECT 
+        owner_id,
+        MAX(transaction_date) AS last_transaction_date
+    FROM 
+        savings_savingsaccount
+    GROUP BY 
+        owner_id
+),
+```
+
+- ` MAX(transaction_date)` gives the latest known savings activity per user.
+
+- This data helps us determine how long it's been since each user last engaged.
+
+### Step 2: CTE - `active_plans`
+Purpose: Retrieve all active plans that are either regular savings or investment products and tag them by type.
+
+```
+active_plans AS (
+    SELECT 
+        id AS plan_id,
+        owner_id,
+        CASE 
+            WHEN is_regular_savings = 1 THEN 'Savings'
+            WHEN is_a_fund = 1 THEN 'Investment'
+            ELSE 'Other'
+        END AS type
+    FROM 
+        plans_plan
+    WHERE 
+        is_regular_savings = 1 OR is_a_fund = 1
+),
+
+```
+
+- Filters for plans where:
+
+  - is_regular_savings = 1 (Savings plans)
+
+  -  is_a_fund = 1 (Investment plans)
+
+- Labels them for clarity using a CASE statement.
+
+- The fallback "Other" shouldn't appear but is included for robustness.
+
+### Step 3: CTE - `plan_with_last_txn`
+Purpose: Combine each active plan with the owner’s last known savings activity, and compute inactivity in days.
+
+```
+plan_with_last_txn AS (
+    SELECT 
+        ap.plan_id,
+        ap.owner_id,
+        ap.type,
+        lst.last_transaction_date,
+        DATEDIFF(CURRENT_DATE, lst.last_transaction_date) AS inactivity_days
+    FROM 
+        active_plans ap
+    LEFT JOIN 
+        last_savings_txn lst ON ap.owner_id = lst.owner_id
+)
+
+```
+- `LEFT JOIN` ensures that users with plans but no savings transactions at all still show up.
+
+- `DATEDIFF(CURRENT_DATE, lst.last_transaction_date)` calculates how long since the last transaction.
+
+- This prepares the data for filtering inactive users.
+
+### Final Output: Inactive Plans Filter
+
+```
+SELECT 
+    * 
+FROM 
+    plan_with_last_txn
+WHERE 
+    inactivity_days > 365;
+
+```
+
+- Filters to show only those plans with more than 365 days of inactivity.
+
+- Returns:
+
+- Plan ID
+
+ - Owner ID
+
+ - Plan type (Savings or Investment)
+
+ - Last activity date
+
+ - Number of days since last activity
 
 
 
----------------------------------------------
+## Challenges & Resolutions
+
+| Challenge                  | Resolution                                                                                      |
+|----------------------------|-------------------------------------------------------------------------------------------------|
+| Identifying plan type      | Used `CASE` to clearly tag plans as `"Savings"` or `"Investment"` based on binary flags in `plans_plan`. |
+| Missing transaction records| Used a `LEFT JOIN` so users with plans but no recorded transactions still appear with `NULL` values.  |
+| Inactivity calculation     | Used `DATEDIFF(CURRENT_DATE, last_transaction_date)` to compute days since last interaction.   |
+| Filtering long-term inactivity | Applied a `WHERE inactivity_days > 365` to target plans idle for over a year.                   |
+| Edge case handling         | Included a fallback in the `CASE` statement (`ELSE 'Other'`) to catch unexpected data without breaking the pipeline. |
 
 
+## Conclusion
+
+This query provides a clear, actionable view into dormant customer plans, enabling:
+
+- Re-engagement campaigns targeting inactive users.
+- Early detection of plan abandonment trends.
+- Personalized outreach based on plan type and inactivity duration.
+
+With a modular design and defensive handling of edge cases, it's easy to extend this query for:
+
+- Shorter or dynamic inactivity thresholds.
+- Plan performance summaries.
+- Integration with CRM alerts or automated workflows.
 
 
 # Approach Breakdown for Estimating Customer Lifetime Value (CLV) Based on Transaction Behavior
